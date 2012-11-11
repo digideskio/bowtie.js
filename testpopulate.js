@@ -1,5 +1,4 @@
 
-
 // This must be set in order for the template class to load via ajax
 baseurl = "http://localhost:8080/sandboxjs/";
 
@@ -17,7 +16,7 @@ var databaseobj = {
 			mpg: 12
 		},
 		beetle: {
-			statement: "I am a vw beetle with unrealic gas mileage!",
+			statement: "I am a vw beetle with unrealistic gas mileage!",
 			mpg: 82
 		}
 	}
