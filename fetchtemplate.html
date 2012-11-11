@@ -1,0 +1,76 @@
+{{include: mydata as mInc }} {{% we're taking a part of the database object and inserting it globally into this script}}
+
+<div>
+	<strong>variable replacement</strong> (should show "geoff daigle")<br/>
+	var1: {{var1}}<br/><br/>
+
+	<strong>if statement</strong> (should show "my name is: bob barker")<br/>
+	{{if:var2}}
+		My name is: {{var3}}
+	{{endif}}
+	<br/><br/>
+
+
+	<strong>if else statement</strong> (should show "the above statement is false!")<br/>
+	{{if!:var2}}
+		My name is: {{var3}}
+	{{else}}
+		The above statement is false!
+	{{endif}}
+	<br/><br/>
+
+	<strong>if, elseif, else statement</strong> (should show "elseif is true!")<br/>
+	{{if!:var2}}
+		My name is: {{var3}}
+	{{elseif:var2}}
+		elseif is true!
+	{{else}}
+		all statments are false!
+	{{endif}}
+	<br/><br/>
+
+	
+	var4: {{var4}}<br/><br/>
+
+	{{template: local:tempfromtemp}} {{% this is how we include a different template from inside one}}
+
+	<strong>nested if-statement</strong><br/>
+	{{if:var2}}
+		if 1 {{var5}}<br/>
+		{{if!:var6}}
+			var7: {{var7}}<br/>
+		{{elseif:var14}}
+			var 14 is true
+		{{else}}
+			we reached the elseif
+		{{endif}}
+		this should come at the end<br/>
+	{{endif}}
+	<br/>
+	var8: {{var8}}<br/><br/>
+
+
+	<strong>looping:</strong><br/>
+	{{loop:var9}}
+		{{ get: mInc[varauto] }} 
+
+		LOOPED: {{var10}}, loop: {{var11}}<br/>
+		Car type: {{varauto}}<br/>
+		It says: {{statement}}<br/>
+		MPGs: {{mpg}}<br/>
+
+	{{endloop}}
+	<br/><br/>
+
+	<strong>nested looping:</strong><br/>
+	{{loop:var9}}
+		LOOPED (var8): {{var8}}, loop: {{var10}}, loop: {{var11}}<br/>
+		{{loop:var12}}
+			LOOPED (var8 override): {{var8}}, loop: {{var13}}<br/>
+		{{endloop}}
+	{{endloop}}
+	<br/><br/>
+
+	var8 again: {{var8}}<br/><br/>
+
+</div>

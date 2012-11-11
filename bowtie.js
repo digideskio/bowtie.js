@@ -18,41 +18,40 @@ bowtie = {
     // this is where all of the template markup will be stored
     data: {},
 
+    // this is the pointer to the full database object to handle includes
+    databaseref: {},
+
     // Load any widget from a URL which can pass this functioin an HTML DOM or a JSON object.
     // Widgets are loaded from URLs via ajax as opposed to passing a raw string for more familar MVC organization of individual view files.
     load: function($key, $url, $callback, $isjson, $type) {
         var bJSON = $isjson || false,
             type = $type || '';
 
-        if (Primordial.baseurl === undefined)
-        {
-            console.error ('ERROR (bowtie.load): Primordial.baseurl is not defined.');
-            return false;
-        }
-
         // if json is passed, IGNORE $key and use one set in the json data
         if (bJSON) {
           $.ajax({
                 type: "POST",
-                url: Primordial.baseurl+$url,
-                data: "type="+type+"&mobile="+Primordial.browserData.is_mobile,
+                url: $url,
+                data: "",
                 success: function(data){
                     bowtie.data = $.parseJSON(data);
                     $callback.call(this);
                 },
                 error: function(XMLHttpRequest, textStatus, errorThrown) {
                     // if the connection or loading fails:
-                    // pull locally stored widgets if localstorage is defined'
-                    if (Primordial.db.localstorage !== undefined)
+                    // pull locally stored widgets if localstorage is defined
+
+                    // THIS IS AN EXAMPLE
+                    /*if (mylocalstorage !== undefined)
                     {
-                        bowtie.data = $.parseJSON(Primordial.db.localStorage.templates);
+                        bowtie.data = $.parseJSON(mylocalstorage.templates);
                         $callback.call(this);
                     }
                     else
                     {
                         //else, total fail
                         console.error('ERROR (bowtie.load): There was an error loading the template files, and there is no local backeup defined.');
-                    }
+                    }*/
                 }
             });
         }
@@ -63,11 +62,13 @@ bowtie = {
             widget = key[1];
             $.ajax({
                 type: "POST",
-                url: Primordial.baseurl+$url,
+                url: $url,
                 data: "",
                 success: function(data){
                     // populate the data object
-                    bowtie.data[namespace] = {};
+                    if (bowtie.data[namespace] === undefined) {
+                        bowtie.data[namespace] = {};
+                    }
                     bowtie.data[namespace][widget] = data;
                     $callback.call(this);
                 },
@@ -238,12 +239,12 @@ bowtie = {
                 for (k = 0; k < inclen; k = k + 1) {
                     if (k === 0)
                     {
-                        if (Primordial.db.data[includekey[k]] !== undefined) {
-                            dataset = Primordial.db.data[includekey[k]];
+                        if (bowtie.databaseref[includekey[k]] !== undefined) {
+                            dataset = bowtie.databaseref[includekey[k]];
                         }
                         else
                         {
-                            console.error('ERROR includeSauce: "'+includekey[k]+'" is not defined in Primordial.db.data');
+                            console.error('ERROR includeSauce: "'+includekey[k]+'" is not defined in bowtie.databaseref');
                             break;
                         }
                     }
@@ -257,7 +258,7 @@ bowtie = {
                         }
                         else
                         {
-                            console.error('ERROR includeSauce: "'+includekey[k]+'" is not defined in Primordial.db.data');
+                            console.error('ERROR includeSauce: "'+includekey[k]+'" is not defined in bowtie.databaseref');
                             break;
                         }
                     }
