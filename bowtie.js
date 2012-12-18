@@ -84,14 +84,26 @@ bowtie = {
     // This runs the logic which takes a dataset and inserts it into the markup.
     // $key is always in the form of 'namespace:widget' and $values is an object of properties named after the replacement vars
     populate: function($key, $values){
-        var widgetobj = bowtie.fetch($key),
-            globals = $values;
+        if (typeof $key === 'string') {
+            var widgetobj = bowtie.fetch($key);
+        } else if (typeof $key === 'object') {
+            var widgetobj = $key.html;
+        } else {
+            console.error('ERROR: bowtie.populate: param $key is not a string or an object');
+            return false;
+        }
+
+        var globals = $values;
 
         // collect all template html that might be referenced inside this template
         widgetobj = bowtie.templateShepherd(widgetobj); 
 
         // take other, external data and merge it with this "values" object
         globals = bowtie.includeSauce(widgetobj, globals);
+
+        // create a separate block instance for any blocks surrounded by {{#}} {{/#}} 
+        // population is carried out separately here
+        widgetobj = bowtie.antisocialPopulate(widgetobj, globals);
 
         // satisfy any get: commands
         globals = bowtie.scopetron(widgetobj, globals);
@@ -154,6 +166,25 @@ bowtie = {
     },
 
 
+    // ANTISOCIALPOPULATE
+    // Takes chunks of the script surrounded by {{#}} {{/#}} and runs the population from the beginning as a separate instance
+    // This is useful when dealing with incompatable sets of data 
+    antisocialPopulate: function(widgetobj, globals){
+        var templatesniff = widgetobj.match(/\{\{[\s]{0,100}\#[\s]{0,100}\}\}(.|\n)*\{\{[\s]{0,100}\/\#[\s]{0,100}\}\}/g),
+            tempmatchlen, i, cutout, newvars;
+        if (templatesniff != null)
+        {
+            tempmatchlen = templatesniff.length;
+            for (i = 0; i < tempmatchlen; i = i + 1) {
+                cutout = templatesniff[i].replace(/\{\{[\s]{0,100}\#[\s]{0,100}\}\}/, '').replace(/\{\{[\s]{0,100}\/\#[\s]{0,100}\}\}/, '');
+                newvars = $.extend({}, globals);
+                widgetobj = widgetobj.replace(templatesniff[i], bowtie.populate({html:cutout}, newvars));
+            }
+        }
+        return widgetobj;
+    },
+
+
     // VARIABLIZER
     // Besides doing a simple variable-replace by matching the var name that is found in {{ }}, there are some other functions available:
     // - %: this is a comment
@@ -173,12 +204,39 @@ bowtie = {
                     // skip
                 }
                 // this converts a timestamp string into a string like "25 Oct 2012"
-                else if(variable.indexOf('time2human') === 0) {
-                  
+                else if(variable.indexOf('time2human') === 0 || variable.indexOf('time2short') === 0) {
+                    var firstSplit = variable.indexOf(':');
+                    variable = variable.substr(firstSplit+1, variable.length);
+                    var timestamp = ($.trim(values[variable])).split(' ')[0];
+                    timestamp = timestamp.split('-');
+
+                    if (variable.indexOf('time2human') === 0) {
+                        var months = [
+                            "January", "February", "March", "April", "May", "June",
+                            "July", "August", "September", "October", "November", "December"
+                        ];
+                    } else {
+                        var months = [
+                            "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+                            "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+                        ];
+                    }
+                    var day = timestamp[2].replace(/^0/, ''); 
+
+                    var insertstr = day+' '+months[parseInt(timestamp[1])-1]+' '+timestamp[0];
+                    if (timestamp[0] === '0000') insertstr = "N/A";
+
+                    widgetobj = widgetobj.replace(varsniff[i], insertstr);
                 }
                 // this converts a timestamp string to a relative string like "5 min ago"
                 else if(variable.indexOf('time2relative') === 0) {
-                  
+                    // uses 3rd party plugins for now
+                }
+                // this converts a string into it's slug equivelent ("Hello world!" -> "hello-world")
+                else if(variable.indexOf('slug:') === 0) {
+                    variable = $.trim(variable.replace('slug:', ''));
+                    variable = $.trim(values[variable]).slugify();
+                    widgetobj = widgetobj.replace(varsniff[i], variable);
                 }
                 // this is a trim command
                 else if (variable.indexOf('trim(') === 0) {
@@ -530,31 +588,35 @@ bowtie = {
     // It searches for an elseif, else, or endif statement and goes into "skipping mode" if it finds a new if statement
     // [this is called inside of LOGICEVAL and does not need to be called explicitly.]
     getNextInTier: function ($currentindex, $snippets) {
-        var sniplen = $snippets.length,
-            skipping = 0,
-            i, rval;
-        for (i = $currentindex + 1; i < sniplen; i = i + 1)
-        {
-            rval = $snippets[i].value.replace(/\{\{|\}\}/g, '').replace(/^\s+|\s+$/g,"");
-            if (skipping > 0) 
-            {
-                if (rval.indexOf('endif') === 0) {
-                    skipping = skipping - 1;
-                }
-            }
-            else
-            {
-                // go to skipping mode if we hit a new inner tier
-                if (rval.indexOf('if') === 0) { 
-                    skipping = skipping + 1; 
-                    continue; 
-                }
+       var sniplen = $snippets.length,
+           skipping = 0,
+           i, rval;
+       for (i = $currentindex + 1; i < sniplen; i = i + 1)
+       {   
+           rval = $snippets[i].value.replace(/\{\{|\}\}/g, '').replace(/^\s+|\s+$/g,"");
+           if (skipping > 0) 
+           {
+               if (rval.indexOf('endif') === 0) {
+                   skipping = skipping - 1;
+               }
 
-                // no skipping, we have a returnable
-                return i;
-            }
-        }
-    },
+               if (rval.indexOf('if') === 0) { 
+                   skipping = skipping + 1; 
+               }
+           }
+           else
+           {
+               // go to skipping mode if we hit a new inner tier
+               if (rval.indexOf('if') === 0) { 
+                   skipping = skipping + 1; 
+                   continue; 
+               }
+
+               // no skipping, we have a returnable
+               return i;
+           }
+       }
+   },
 
 
     // LOOPTOKENIZE
@@ -682,3 +744,22 @@ bowtie = {
 
 
 
+/**
+ *
+ * String.prototype.slugify
+ * Geoff Daigle - 2012
+ * ported from http://milesj.me/snippets/javascript/slugify
+ * Takes a string and removes everything but qualified chars, then adds dashes into the spaces
+ * USED FOR THE {{slug:VAR}} command in bowtie
+ *
+ */
+String.prototype.slugify = function (text) {
+    // "this" returns an array of chars in a string prototype, strangely.
+    // So, naturally, we convert that here.
+    var slugobj = this.toString().toLowerCase();
+    // Do the rest of our operations
+    slugobj = slugobj.replace(/[^-a-zA-Z0-9,&\s]+/ig, '');
+    slugobj = slugobj.replace(/-/gi, "_");
+    slugobj = slugobj.replace(/\s/gi, "-");
+    return slugobj; 
+}
