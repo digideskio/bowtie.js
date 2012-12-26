@@ -367,30 +367,45 @@ bowtie = {
     // When {{get:VAR}} is called, this does a var.value == var2[propname] compare and places the var2[propname] object into the global scope if true
     // This is really helpful when you want to do somehing like "while looping, use the candidate[index] where index equals the current user_id"
     // This function is often used in conjunction with {{include:VAR as ALIAS}} for some quick data joining
+    //
+    // Another function done here is variable assigmnent for on-the-fly manual changes
+    // Simply parses the string {{ VAR = VALUE }} and assigns (or creates) the object property with a string value of VALUE
+    // NOTE: Variable translation happens far after all of the variable assigmnent has been completed, so if you assign a
+    //       value to a global variable at the bottom of the template, a call to it at the top will yield the new value.
     scopetron: function(widgetobj, values){
-        var varsniff = widgetobj.match(/\{\{[\s]{0,100}get:(.*?)[\s]{0,100}\}\}/g),
-            varlen, i, variable, getvar, selector, index, innersel;
+        var varsniff = widgetobj.match(/\{\{[\s]{0,100}get:(.*?)[\s]{0,100}\}\}|\{\{[\s]{0,100}(.*?)=(.*?)[\s]{0,100}\}\}/g),
+            varlen, i, variable, getvar, selector, index, innersel,
+            varkey, varval;
 
         if (varsniff != null)
         {
             varlen = varsniff.length;
             for (i = 0; i < varlen; i = i + 1) {
                 variable = varsniff[i].replace(/\{\{|\}\}|\s/g, '');
-                // this is a get command
-                getvar = variable.replace('get:', '');
-                getvar = getvar.split('[');
-                // only continue if correctly formatted
-                if (getvar.length > 1)
-                {
-                    selector = getvar[0];
-                    index = getvar[1].replace(']', '');
-                    innersel = values[selector];
-                    if(innersel !== undefined) {
-                        //alert(index+' = '+values[index]);
-                        // only continue if this index and variable exist
-                        if (innersel[values[index]] !== undefined)
-                        {
-                            values = $.extend(values, innersel[values[index]]);
+                if (variable.indexOf('=') !== -1) {
+                    // we have variable assignment
+                    variable = variable.split('=');
+                    varkey = $.trim(variable[0]);
+                    varval = $.trim(variable[1]);
+                    // assign the variable
+                    values[varkey] = varval;
+                } else {
+                    // this is a get command
+                    getvar = variable.replace('get:', '');
+                    getvar = getvar.split('[');
+                    // only continue if correctly formatted
+                    if (getvar.length > 1)
+                    {
+                        selector = getvar[0];
+                        index = getvar[1].replace(']', '');
+                        innersel = values[selector];
+                        if(innersel !== undefined) {
+                            //alert(index+' = '+values[index]);
+                            // only continue if this index and variable exist
+                            if (innersel[values[index]] !== undefined)
+                            {
+                                values = $.extend(values, innersel[values[index]]);
+                            }
                         }
                     }
                 }
