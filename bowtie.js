@@ -541,7 +541,21 @@ bowtie = {
                     // VALUE COMPARE
                     variable1 = rval.split('=');
                     varkey = $.trim(variable1[0]);
-                    varval = $.trim(variable1[1]);
+                    varval = variable1[1];
+
+                    // we'll check to see if =? is present, which means compare against another variable and not the string value
+                    if (varval.indexOf('?') === 0 ) {
+                        varval = varval.replace('?', '');
+                        varval = $.trim(varval);
+                        if ($data[varval] !== undefined ) {
+                            varval = ""+$data[varval]+"";
+                        } else {
+                            varval = '';
+                        }
+                    } else {
+                        varval = $.trim(varval);
+                    }
+
                     // first two are if the variable doesn't exist -> default to falsey, compare var depending
                     if ($data[varkey] === undefined && compare === false) {
                         evaluate = true;
