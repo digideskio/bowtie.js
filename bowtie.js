@@ -503,7 +503,8 @@ bowtie = {
         var searchregex = /\{\{[\s]{0,100}if(.*?)[\s]{0,100}\}\}|\{\{[\s]{0,100}elseif(.*?)[\s]{0,100}\}\}|\{\{[\s]{0,100}else[\s]{0,100}\}\}|\{\{[\s]{0,100}endif[\s]{0,100}\}\}/g,
             repmatch, snippets = [],
             nextindex = 0,
-            numBlocks, i, rval, evaluate, compare, cutspot, comparevar, evalchunk;
+            numBlocks, i, rval, evaluate, compare, cutspot, comparevar, evalchunk,
+            variable1, varkey, varval;
 
         // gather some info on the regex matches and their indexes
         while (repmatch = searchregex.exec($block)) {
@@ -535,33 +536,52 @@ bowtie = {
                 // get var from statement
                 rval = rval.substr(cutspot, rval.length);
 
-                // below are the situations where we would evaluate
-                if ($data[rval] === undefined && compare === false)
-                {
-                    evaluate = true;
-                }
-                else if ($data[rval] === undefined && compare === true)
-                {
-                    // just covering bases here
-                    evaluate = false;
-                }
-                else 
-                {
-                    comparevar = parseInt($data[rval]);
-                    if(isNaN(comparevar)){
-                        comparevar = $data[rval];
-                        if (comparevar === '')
-                            comparevar = false;
-                        else
-                            comparevar = true;
-                    }
-                    if (!comparevar && compare === false)
-                    {
+                // Now we either do a straight boolean compare, or a value compare
+                if (rval.indexOf('=') !== -1 ) {
+                    // VALUE COMPARE
+                    variable1 = rval.split('=');
+                    varkey = $.trim(variable1[0]);
+                    varval = $.trim(variable1[1]);
+                    // first two are if the variable doesn't exist -> default to falsey, compare var depending
+                    if ($data[varkey] === undefined && compare === false) {
                         evaluate = true;
+                    } else if ($data[varkey] === undefined && compare === true) {
+                        evaluate = false;
+                    } else {
+                        // do a legit compare
+                        varval = varval.toLowerCase(); // most likely wont need to be picky. if so, do it in the JS  
+                        if ((''+$data[varkey]+'').toLowerCase() === varval && compare === true) {
+                            evaluate = true;
+                        } else if ((''+$data[varkey]+'').toLowerCase() !== varval && compare === false) {
+                            evaluate = true;
+                        } else {
+                            evaluate = false;
+                        }
                     }
-                    else if (comparevar && compare === true)
-                    {
+
+
+                } else {
+                    // BOOLEAN COMPARE
+                    // below are the situations where we would evaluate
+                    if ($data[rval] === undefined && compare === false) {
                         evaluate = true;
+                    } else if ($data[rval] === undefined && compare === true) {
+                        // just covering bases here
+                        evaluate = false;
+                    } else {
+                        comparevar = parseInt($data[rval]);
+                        if(isNaN(comparevar)){
+                            comparevar = $data[rval];
+                            if (comparevar === '')
+                                comparevar = false;
+                            else
+                                comparevar = true;
+                        }
+                        if (!comparevar && compare === false) {
+                            evaluate = true;
+                        } else if (comparevar && compare === true) {
+                            evaluate = true;
+                        }
                     }
                 }
 
