@@ -273,6 +273,7 @@ var
 		// scrap the token data
 		if_tokens = {};
 		loop_tokens = {};
+		with_tokens = {};
 
 		// get the benchmark time and save it
 		bench_end = new Date().getTime();
