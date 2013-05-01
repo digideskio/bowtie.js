@@ -279,11 +279,21 @@ var
 		bench_end = new Date().getTime();
 		last_render_time = bench_end - bench_start;
 
-		console.log('Bowtie: Generated template in '+bt.last_render_time());
+		if (bt_factory.debug === true) {
+			console.log('Bowtie: Generated template in '+bt.last_render_time());
+		}
 
 		// order up!
 		return working_template;
 	};
+
+
+	/**
+    	Toggle debug info
+
+    	@public
+	*/
+	bt_factory.debug = false;
 
 
 	/**
@@ -322,11 +332,18 @@ var
 	    @name bowtie.load
 	    @public
 	    @function
-	    @param {String} the template key to call when loading the template
+	    @param {String|Boolean} the template key to call when loading the template, or true
 	    @param {string} teh template object
 	    @returns {Boolean} True if success, false if not.
 	 */
 	bt_factory.load = function($template_key, $template_str) {
+
+		// overwrite everything if first param is true because we have json
+		if ($template_key === true && util.get_type($template_str) === 'object') {
+			template_cache = $template_str;
+			return true;
+		}
+
 		if (util.get_type($template_str) !== 'string' || util.get_type($template_key) !== 'string' ) {
 			return false;
 		}
