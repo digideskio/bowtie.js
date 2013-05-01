@@ -49,7 +49,7 @@ var
 	 // (10)
 	reg_num_parens = /\(([0-9]{1,100})\)/g,
 	 // {{#}} and {{/#}}
-	reg_block_hash = /\{\{[\s]{0,100}\#[\s]{0,100}\}\}(.|\n)*\{\{[\s]{0,100}\/\#[\s]{0,100}\}\}/g,
+	reg_block_hash = /\{\{[\s]{0,100}\#[\s]{0,100}\}\}(.|\n|\r)*\{\{[\s]{0,100}\/\#[\s]{0,100}\}\}/g,
 	reg_hash_start = /\{\{[\s]{0,100}\#[\s]{0,100}\}\}/,
 	reg_hash_end = /\{\{[\s]{0,100}\/\#[\s]{0,100}\}\}/,
 	// {{include: VAR as ALIAS}} or {{include: VAR}}
@@ -351,6 +351,7 @@ var
 		var template_pointer = template_cache,
 			key_steps = $template_key.replace(/\s/g, '').split('.'),
 			key_pointer;
+
 
 		// get the right pointer object
 		while (key_steps.length !== 0) {
@@ -849,7 +850,6 @@ var
        		// safety copy
        		data_copy = util.object_merge(true, {}, $data);
 
-
        		if (token_meta.type === 'with') {
        			token_meta.value = fn.with_block_evaluate.call(token_target, token_meta.value , $tokens, data_copy, $prefix);
        		}
@@ -940,10 +940,22 @@ var
 			if (util.get_type($ivar) === 'object') {
 				data_copy = util.object_merge(true, {}, $ivar, $data);
 			}
+
 			// isolated instance of {{get}}
 			data_copy = fn.include_data_in_scope.call($block, data_copy);
-			// recursive...
-			temp_string = fn.evaluate_tokens($block, $tokens, data_copy, $prefix);
+
+			// evaluate loops {{foreach}}
+			temp_string = fn.evaluate_tokens($block, $tokens, data_copy, 'foreach');
+
+			// get rid of the extra foreach blocks
+			temp_string = temp_string.replace(reg_block_loop, '');
+
+			// evaluate if statements {{if}}
+			temp_string  = fn.evaluate_tokens(temp_string, if_tokens, data_copy, 'if');
+
+			// evaluate inner "with" statements {{with}}
+			temp_string = fn.evaluate_tokens(temp_string, with_tokens, data_copy, 'with');
+
 			// because of isolation, we evaluate variables now
 			temp_string = fn.render_variables.call(temp_string, data_copy);
 
@@ -972,6 +984,7 @@ var
 		if (!$tagmatches) {
 			$tagmatches = $block.match(reg_if_elseif);
 		}
+
 
 		var evaluate = true,
 			head_tag = util.trim($tagmatches[0].replace(reg_brackets, '')),
@@ -1023,11 +1036,20 @@ var
 		if (evaluate) {
 			var data_copy = util.object_merge(true, {}, $data);
 			// clean up the block and other unused data
-			$block = $block.replace(new RegExp($tagmatches[1]+'(.|\n)*'), '');
+			$block = $block.replace(new RegExp($tagmatches[1]+'(.|\n|\r)*'), '');
+
 			// isolated instance of {{get}}
 			data_copy = fn.include_data_in_scope.call($block, data_copy);
-			// recursive...
-			$block = fn.evaluate_tokens($block, $tokens, data_copy, $prefix);
+
+			// evaluate loops {{foreach}}
+			$block = fn.evaluate_tokens($block, loop_tokens, data_copy, 'foreach');
+
+			// evaluate if statements {{if}}
+			$block  = fn.evaluate_tokens($block, if_tokens, data_copy, $prefix);
+
+			// evaluate inner "with" statements {{with}}
+			$block = fn.evaluate_tokens($block, with_tokens, data_copy, 'with');
+			
 			// because of isolation, we evaluate variables now
 			$block = fn.render_variables.call($block, data_copy);
 
@@ -1035,7 +1057,7 @@ var
 			// we might have an elseif or else left to try, so keep moving
 			if ($tagmatches[2] !== undefined) {
 				// remove the previous stuff
-				$block = $tagmatches[1] + $block.replace(new RegExp('(.|\n)*'+$tagmatches[1]), '');
+				$block = $tagmatches[1] + $block.replace(new RegExp('(.|\n|\r)*'+$tagmatches[1]), '');
 				// pop the top of the stack
 				$tagmatches.shift();
 				// recursively try again on next spot
@@ -1045,6 +1067,7 @@ var
 			}
 		}
 		$block = $block.replace(reg_if_elseif, '');
+
 		return $block;
 	};
 
@@ -1407,7 +1430,7 @@ var
 		}
 
 		// if everything validates, we check for the existence of the property and return the proper data
-		if (object_hasOwnProp.call($obj_pointer, next_path)) {
+		if (next_path in $obj_pointer) {
 			if (steps_left === 0) {
 				return $obj_pointer[next_path];
 			} else {
