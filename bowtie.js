@@ -392,7 +392,7 @@ var
 	    @returns {Boolean} True if success, false if name is in use.
 	 */
 	bt_factory.register_plugin = function($plugin_name, $plugin_selector, $plugin_function) {
-		var can_add = true, sel_is_func = util.is_function($plugin_selector);
+		var can_add = true, sel_is_func = util.get_type($plugin_selector) === 'function';
 
 		$plugin_name = $plugin_name.replace(reg_whitespace, '');
 		util.for_each(registered_plugins, function() {
@@ -404,7 +404,7 @@ var
 
 		// we can do a shorthand registration by passing only a string and a callback
 		// to this function instead of those two and also a regex object
-		if (sel_is_func || util.get_type($plugin_name) === 'string') {
+		if (sel_is_func && util.get_type($plugin_name) === 'string') {
 			$plugin_function = $plugin_selector;
 			// we create a regex selector from the string name
 			$plugin_selector = new RegExp($plugin_name+"\\:", 'i');
@@ -441,6 +441,18 @@ var
 		}	
 	};
 
+
+	/**
+	   	Returns the template_cache object with all saved templates
+
+	    @name bowtie.get_templates
+	    @public
+	    @function
+	    @returns {Object} The template_cache object
+	 */
+	bt_factory.get_templates = function() {
+		return template_cache;
+	};
 
 
 
@@ -518,19 +530,25 @@ var
 
 			// check to see if we have an alias name and if so, prep for it
 			g_include_split = g_include.split(' as ');
+			g_include_key = g_include_split[0].split('.');
+
+			util.for_each(g_include_key, function($i, $val){
+				g_include_key[$i] = util.trim($val);
+			});
+
 			if (g_include_split[1] !== undefined) {
 				var_alias = g_include_split[1];
 				has_alias = true;
 			} else {
-				var_alias = g_include_split[(g_include_split.length - 1)];
+				var_alias = g_include_key[0];
 			}
-			g_include_key = g_include_split[0].split('.');
 
 			// safety trim
 			var_alias = util.trim(var_alias);
 
 			// get the object that's asked for from bt.db_pointer, or just pass { } if null
 			temp_dataset = util.object_rsearch(g_include_key, bt.db_pointer);
+
 			if (temp_dataset === null) {
 				temp_dataset = {};
 			}
@@ -564,7 +582,7 @@ var
 		util.match_loop(this, reg_block_hash, function($match) {
                 block_slice = $match.replace(reg_hash_start, '').replace(reg_hash_end, '');
                 data_copy = util.object_merge(true, {}, $global_data_object);
-                t_temp = this.replace($match, bt.populate(block_slice, data_copy));
+                t_temp = t_temp.replace($match, bt.populate(block_slice, data_copy));
         });
         return t_temp;
 	};
@@ -602,6 +620,7 @@ var
                     // if selected_var is an array...
                     if (prop_to_compare.indexOf('=') !== -1 && util.get_type(selected_var) === 'array' ) {
 
+
                         var selected_var_length = selected_var.length, index = 0, 
                         	prop_compare_split, selected_var_prop, compare_string, 
                         	compare_variables = true, comparison_result;
@@ -623,24 +642,24 @@ var
 
                         for (; index < selected_var_length; index++){
                             if (selected_var[index][selected_var_prop] !== undefined) {
+                            	
                             	if (compare_variables) {
-                            		comparison_result = (String(selected_var[index][selected_var_prop]).toLowerCase() 
-                            			=== String($data_object[compare_string]).toLowerCase());
+                            		comparison_result = fn.determine_evaluate(selected_var[index][selected_var_prop], false, $data_object[compare_string]);
                             	} else {
-                            		comparison_result = (String(selected_var[index][selected_var_prop]).toLowerCase() 
-                            			=== compare_string.toLowerCase());
+                            		comparison_result = fn.determine_evaluate(selected_var[index][selected_var_prop], false, compare_string);
                             	}
+
                                 if (comparison_result) {
                                    	// Delete the property (PROP) that we compared against because:
                                    	// 1. We used an equivalent variable to find the object, and
                                    	// 2. For things like primary keys, different data sets could have the same
                                    	//    property names which could accidentally be overwritten (for example, ID)
-                                    var safety_obj = util.object_merge({}, selected_var[index]);
+                                    var safety_obj = util.object_merge(true, {}, selected_var[index]);
                                     delete safety_obj[selected_var_prop];
                                     // merge data
                                     $data_object = util.object_merge(true, $data_object, safety_obj);
-                                }
-
+                                    break;
+                                } 
                             }
                         }
                     } 
@@ -656,7 +675,6 @@ var
             }
 
 	    });
-
 
 		return $data_object;
 	};
@@ -892,7 +910,7 @@ var
 			if (with_target !== null) {
 				// include the data object being asked for
 				if (util.get_type(with_target) === 'object') {
-					data_copy = util.object_merge(true, {}, with_target, $data);
+					data_copy = util.object_merge(true, {}, $data, with_target);
 				}
 
 				// {{get}}, other tokens, and {{VAR}} replacements
@@ -938,7 +956,7 @@ var
 		util.for_each(target_var, function ($i, $ivar){
 			temp_string = '';
 			if (util.get_type($ivar) === 'object') {
-				data_copy = util.object_merge(true, {}, $ivar, $data);
+				data_copy = util.object_merge(true, {}, $data, $ivar);
 			}
 
 			// isolated instance of {{get}}
@@ -1221,9 +1239,9 @@ var
 	util.get_var_mod_function = function($var_name) {
 		var mod_func = null;
 		util.for_each(registered_plugins, function($key, $val) {
-			if ($var_name.search(this.selector) === 0) {
+			if ($var_name.search($val.selector) === 0) {
 				mod_func = this.modifier;
-				$var_name = util.trim($var_name.replace(this.selector, ''));
+				$var_name = util.trim($var_name.replace($val.selector, ''));
 			}
 		});
 		return [$var_name, mod_func];
