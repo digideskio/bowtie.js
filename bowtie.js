@@ -822,6 +822,7 @@ var
             $container_object[token_name] = $single_match.value;
 
 	    });
+	       
 
 		// check matches so we can avoid an infinite loop
         if (match_count > 0){
@@ -860,8 +861,8 @@ var
        			return true;
        		}
 
-       		// skip if the variable in question doesnt exist
-			if (token_target === null) {
+       		// skip if the variable in question doesnt exist (EXCLUDING IF)
+			if (token_target === null && token_meta.type !== 'if') {
        			return true;
        		}
 
@@ -1003,7 +1004,6 @@ var
 			$tagmatches = $block.match(reg_if_elseif);
 		}
 
-
 		var evaluate = true,
 			head_tag = util.trim($tagmatches[0].replace(reg_brackets, '')),
 			this_tag = 'if',
@@ -1049,7 +1049,7 @@ var
 
 			evaluate = fn.determine_evaluate(target_var, inverse, comparison_var);
 		}
-
+		
 		// run evaluation here
 		if (evaluate) {
 			var data_copy = util.object_merge(true, {}, $data);
