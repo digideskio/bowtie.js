@@ -240,7 +240,7 @@ var
 	    @returns {Object} A "key" object to render the cached template
 	*/
 	bt_factory.render = function($template_key, $global_data) {
-		var passdata = {}
+		var passdata = {};
 		if ($global_data !== undefined && typeof $global_data === 'object'){
 		 	passdata = util.object_merge(true, {}, $global_data);
 		}
@@ -379,7 +379,8 @@ var
 
 		var can_add = true, sel_is_func = util.get_type($plugin_compile) === 'function',
 			reserved_names = ['if', 'elseif', 'with', 'get', 'include', 'foreach', 'template'];
-			$plugin_name = util.trim($plugin_name.toLowerCase());
+		
+		$plugin_name = util.trim($plugin_name.toLowerCase());
 
 		// thwart attempts to override reserved keywords...
 		if (util.in_array($plugin_name, reserved_names) !== -1) {
@@ -1181,9 +1182,9 @@ var
     fn.assign_plugin_handler = function( $command, $varname, $plugin_obj ) {
     	var $steps = util.trim($varname).split('.'),
     		passdata = {};
-    		if (typeof $plugin_obj.compile_func !== 'undefined'){
-	    		passdata = $plugin_obj.compile_func($command);
-	    	}
+		if (typeof $plugin_obj.compile_func !== 'undefined'){
+    		passdata = $plugin_obj.compile_func($command);
+    	}
 
     	var t_action = function($data, $pos) {
     		var object_var = util.object_rsearch( $steps, $data );
