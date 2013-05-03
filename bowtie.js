@@ -737,9 +737,8 @@ var
 	    @returns {Object} A token object
 	 */
     fn.token_foreach = function( $varname, $loop_command ) {
-
     	var $steps = util.trim($varname).split('.'),
-    		command = $loop_command.split('(');
+    		command = $loop_command.split('('),
     		has_aliases = false, inner_command = '',
     		alias_index = '', alias_value = '';
 
@@ -767,6 +766,9 @@ var
 				if (this.countdown === 0) {
 					this.countdown = null;
 					this.i = 0;
+					this.alias_index = '';
+	    			this.alias_value = '';
+	    			this.has_aliases = false;
     				properties = [];
 					return fn.get_foreach_end_pos($pos);
 				} 
@@ -779,18 +781,22 @@ var
 			} 
     		if (loopvar !== null) {
     			if (this.countdown === null) {
+   
     				// prep the counters
     				this.countdown = util.get_length(loopvar);
     				this.properties = util.get_loopable_props(loopvar);
+    				this.alias_index = alias_index;
+	    			this.alias_value = alias_value;
+	    			this.has_aliases = has_aliases;
     			}
 
     			// pass approproate data for aliases or non-aliased
     			if (has_aliases) {
     				var aliasobject = {};
     				if (alias_index !== '') {
-    					aliasobject[alias_index] = ""+this.i+"";
+    					aliasobject[this.alias_index] = ""+this.i+"";
     				}
-    				aliasobject[alias_value] = this.properties[this.i];
+    				aliasobject[this.alias_value] = this.properties[this.i];
     				var passdata = util.object_merge(true, {}, $data, aliasobject );
     			} else {
 	    			var passdata = util.object_merge(true, {}, $data, this.properties[this.i] );
@@ -811,6 +817,9 @@ var
     		type: 'foreach', 
     		countdown: null,
     		i: 0,
+    		has_aliases: false,
+    		alias_index: '',
+    		alias_value: '',
     		properties: [],
     		action: t_action
     	};
