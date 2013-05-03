@@ -134,6 +134,13 @@ var
 
 
 	/**
+	    Keeps track of if/elseif truths so teh "else" tokens can respond appropriately
+	    @private
+	*/
+	if_successes = {},
+
+
+	/**
 	    When making a copy of data to use in the "with" statements, add it here
 	    @private
 	*/
@@ -517,7 +524,7 @@ var
 
 			// else/endif
 			} else if (tag_split[0].indexOf('else') === 0){ 
-				return fn.token_noaction('else');
+				return fn.token_else();
 			} else if (tag_split[0].indexOf('endif') === 0){ 
 				return fn.token_endif();
 
@@ -682,21 +689,21 @@ var
 	 */
     fn.token_if = function($inverse, $varname, $type) {
     	var $steps = util.trim($varname), var_compare = true,
-    		target_var = '', comparison_var = '';
+    		target_var = '', comparison_var = null;
 
     	if ($varname.indexOf('?=') !== -1) {
     		comparison_var = $varname.split('?=');
-    		target_var = $comparison_var[0];
-    		comparison_var = util.trim(comparison_var[1]);
+    		target_var = comparison_var[0];
+    		comparison_var = util.trim(comparison_var[1]).split('.');
     	} else if ($varname.indexOf('=') !== -1) {
     		comparison_var = $varname.split('=');
-    		target_var = $comparison_var[0];
+    		target_var = comparison_var[0];
     		comparison_var = util.trim(comparison_var[1]);
     		var_compare = false;
     	} else {
+    		var_compare = false;
     		target_var = $varname;
     	}
-    	comparison_var = comparison_var.split('.');
     	target_var = util.trim(target_var).split('.');
     	
     	
@@ -704,16 +711,24 @@ var
     		var pass_comparison_var = null, eval_var = null;
     		if ($type === 'if'){
 	    		if_tiers++;
+	    	} else if (typeof if_successes['if_'+if_tiers] !== 'undefined') {
+	    		// if we have already accepted an if statement, then we dont need an elseif
+	    		delete if_successes['if_'+if_tiers];
+	    		return fn.get_next_endif_statement_pos( $pos );
 	    	}
 	   
     		eval_var = util.object_rsearch(target_var, $data);
+    		// find the comparison object
     		if (var_compare) {
     			pass_comparison_var = util.object_rsearch(comparison_var, $data);
-    		} 
+    		} else {
+    			pass_comparison_var = comparison_var;
+    		}
 
     		evaluate = fn.determine_evaluate(eval_var, $inverse, pass_comparison_var);
 
     		if (evaluate) {
+    			if_successes['if_'+if_tiers] = true;
     			return '';
     		} else {
     			return fn.get_next_if_statement_pos( $pos );
@@ -1041,6 +1056,29 @@ var
 
 
     /**
+	  	Token handler for "else" statements
+
+	    @name fn.token_endif
+	    @private
+	    @function
+	    @returns {Object} A token object
+	 */
+    fn.token_else = function() {
+    	return {
+    		type: 'else',
+    		action: function($data, $pos){
+		    	if (typeof if_successes['if_'+if_tiers] !== 'undefined') {
+		    		delete if_successes['if_'+if_tiers];
+		    		return fn.get_next_if_statement_pos( $pos );
+		    	} else {
+		    		return '';
+		    	}
+		    }
+	    }
+    };
+
+
+    /**
     	Token handler for "endforeach" statements.
 
 	  	Walks through the tokens in reverse from the current "endforeach" tag
@@ -1145,6 +1183,43 @@ var
     	for (; i < template_tokens.length; i++) {
     		if (typeof template_tokens[i] !== 'string') {
     			if (template_tokens[i].type === 'endif' || template_tokens[i].type === 'elseif' || template_tokens[i].type === 'else') {
+    				if (current_tier === if_tiers) {
+    					break;
+    				} else {
+    					current_tier--;
+    				}
+    			}
+    			if (template_tokens[i].type === 'if') {
+    				current_tier++;
+    			}
+    		}
+    	}
+    	if (i < 0) i = 0;
+
+    	// some error handling for my sanity
+    	if (if_tiers < 0){
+    		throw new Error("get_foreach_end_pos ("+loop_tiers+") loop_tiers less than 0");
+    	}
+    	return {go_to: i-1}; 
+    };
+
+
+	/**
+	  	Walks forward through each token from the current index of the "if" or "elseif" tag and 
+	  	finds the next corresponding  "endif" tag.
+
+	    @name fn.get_next_endif_statement_pos
+	    @private
+	    @function
+	    @param {Integer} The current index of the token iterator
+	    @returns {Object} A token response object
+	 */
+    fn.get_next_endif_statement_pos = function( $pos ) {
+    	var i = $pos+1;
+    	var current_tier = if_tiers;
+    	for (; i < template_tokens.length; i++) {
+    		if (typeof template_tokens[i] !== 'string') {
+    			if (template_tokens[i].type === 'endif') {
     				if (current_tier === if_tiers) {
     					break;
     				} else {
