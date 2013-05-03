@@ -767,37 +767,30 @@ var
 				if (this.countdown === 0) {
 					this.countdown = null;
 					this.i = 0;
-					this.alias_index = '';
-	    			this.alias_value = '';
-	    			this.has_aliases = false;
     				properties = [];
 					return fn.get_foreach_end_pos($pos);
 				} 
 			}
     		var loopvar = util.object_rsearch($steps, $data);
 			// merge the data
-			if (loop_tiers === 1) {
+			if (loop_data_cache.length === 0) {
 				var safecopy = util.object_merge(true, {}, $data);
 				loop_data_cache.push(safecopy);
 			} 
     		if (loopvar !== null) {
     			if (this.countdown === null) {
-   
     				// prep the counters
     				this.countdown = util.get_length(loopvar);
     				this.properties = util.get_loopable_props(loopvar);
-    				this.alias_index = alias_index;
-	    			this.alias_value = alias_value;
-	    			this.has_aliases = has_aliases;
     			}
 
     			// pass approproate data for aliases or non-aliased
     			if (has_aliases) {
     				var aliasobject = {};
     				if (alias_index !== '') {
-    					aliasobject[this.alias_index] = ""+this.i+"";
+    					aliasobject[alias_index] = ""+this.i+"";
     				}
-    				aliasobject[this.alias_value] = this.properties[this.i];
+    				aliasobject[alias_value] = this.properties[this.i];
     				var passdata = util.object_merge(true, {}, $data, aliasobject );
     			} else {
 	    			var passdata = util.object_merge(true, {}, $data, this.properties[this.i] );
@@ -818,9 +811,6 @@ var
     		type: 'foreach', 
     		countdown: null,
     		i: 0,
-    		has_aliases: false,
-    		alias_index: '',
-    		alias_value: '',
     		properties: [],
     		action: t_action
     	};
@@ -841,7 +831,7 @@ var
     	var t_action = function($data, $pos) {
     		with_tiers++;
     		var withvar = util.object_rsearch($steps, $data);
-			if (with_tiers === 1) {
+			if (with_data_cache.length === 0) {
 				var safecopy = util.object_merge(true, {}, $data);
 				with_data_cache.push(safecopy);
 			} 
