@@ -134,7 +134,7 @@ var
 
 
 	/**
-	    Keeps track of if/elseif truths so teh "else" tokens can respond appropriately
+	    Keeps track of if/elseif truths so the "else" tokens can respond appropriately
 	    @private
 	*/
 	if_successes = {},
@@ -320,7 +320,7 @@ var
 	    @public
 	    @function
 	    @param {String|Boolean} the template key to call when loading the template, or true
-	    @param {string} teh template object
+	    @param {string} The template object
 	    @returns {Boolean} True if success, false if not.
 	 */
 	bt_factory.load = function($template_key, $template_str) {
@@ -1185,7 +1185,7 @@ var
     			if (template_tokens[i].type === 'endif' || template_tokens[i].type === 'elseif' || template_tokens[i].type === 'else') {
     				if (current_tier === if_tiers) {
     					break;
-    				} else {
+    				} else if (template_tokens[i].type === 'endif') {
     					current_tier--;
     				}
     			}
@@ -1195,10 +1195,9 @@ var
     		}
     	}
     	if (i < 0) i = 0;
-
     	// some error handling for my sanity
     	if (if_tiers < 0){
-    		throw new Error("get_foreach_end_pos ("+loop_tiers+") loop_tiers less than 0");
+    		throw new Error("get_next_if_statement_pos ("+if_tiers+") if_tiers less than 0");
     	}
     	return {go_to: i-1}; 
     };
@@ -1219,6 +1218,7 @@ var
     	var current_tier = if_tiers;
     	for (; i < template_tokens.length; i++) {
     		if (typeof template_tokens[i] !== 'string') {
+
     			if (template_tokens[i].type === 'endif') {
     				if (current_tier === if_tiers) {
     					break;
@@ -1235,7 +1235,7 @@ var
 
     	// some error handling for my sanity
     	if (if_tiers < 0){
-    		throw new Error("get_foreach_end_pos ("+loop_tiers+") loop_tiers less than 0");
+    		throw new Error("get_next_endif_statement_pos ("+if_tiers+") if_tiers less than 0");
     	}
     	return {go_to: i-1}; 
     };
