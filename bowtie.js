@@ -958,8 +958,8 @@ var
     	g_include = $varname.replace(reg_big_spaces, ' ');
 
     	// check to see if we have an alias name and if so, prep for it by trimming
-    	g_include_split = g_include.split(' as ');
-    	g_include_key = g_include_split[0].split('.');
+    	var g_include_split = g_include.split(' as ');
+    	var g_include_key = g_include_split[0].split('.');
     	util.for_each(g_include_key, function($i, $val){
     		g_include_key[$i] = util.trim($val);
     	});
@@ -969,7 +969,12 @@ var
     		var_alias = g_include_split[1];
     		has_alias = true;
     	} else {
-    		var_alias = g_include_key[0];
+    		var_alias = g_include_key[g_include_key.length - 1];
+    		// just to enforce some rules
+    		if (var_alias.indexOf('eq(') !== -1) {
+    			throw new Error('Bowtie error (token_include) "'+$varname+'" must have an alias to be included [include: VAR as ALIAS]');
+    		}
+    		
     	}
     	// safety trim
     	var_alias = util.trim(var_alias);
@@ -977,10 +982,14 @@ var
     	var t_action = function($data, $pos) {
     		var temp_dataset = {}, key_array = g_include_key;
 
-    		// get the object that's asked for from bt.db_pointer, or just pass { } if null
-    		temp_dataset = util.object_rsearch(key_array, bt.db_pointer);
+    		// get the object that's asked for from first the data, then bt.db_pointer
+    		temp_dataset = util.object_rsearch(key_array, $data);
     		if (temp_dataset === null) {
-    			temp_dataset = {};
+    			temp_dataset = util.object_rsearch(key_array, bt_pointer);
+    			// pass blank object if not found
+    			if (temp_dataset === null) {
+	    			temp_dataset = {};
+	    		}
     		}
     		// add it to our collective dataset
 		    $data[var_alias] = temp_dataset;
