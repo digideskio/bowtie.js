@@ -481,8 +481,9 @@ var
 	 */
 	fn.recursive_compile = function ( $object, $keystring ) {
 	    for (var elem in $object) {
-	    	if (!$object.hasOwnProperty(elem))
+	    	if (!$object.hasOwnProperty(elem)) {
         		continue; 
+        	}
 
         	var obj_type = util.get_type($object[elem]),
         		keystring_copy = $keystring;
@@ -819,7 +820,7 @@ var
     		loop_tiers++;
     		if (this.countdown !== null) {
     			this.countdown--;
-				if (this.countdown === 0) {
+				if (this.countdown <= 0) {
 					this.countdown = null;
 					this.i = 0;
     				properties = [];
@@ -837,6 +838,13 @@ var
     				// prep the counters
     				this.countdown = util.get_length(loopvar);
     				this.properties = util.get_loopable_props(loopvar);
+    				// kill if we have nothing to loop
+    				if (this.countdown === 0) {
+    					this.countdown = null;
+						this.i = 0;
+	    				properties = [];
+		    			return fn.get_foreach_end_pos($pos);
+		    		}
     			}
 
     			// pass approproate data for aliases or non-aliased
@@ -1088,7 +1096,10 @@ var
     	return {
     		type: 'endif',
     		action: function(){
-		    	if_tiers--;
+    			if (typeof if_successes['if_'+if_tiers] !== 'undefined'){
+	    			delete if_successes['if_'+if_tiers];
+	    		}
+		    	if_tiers = if_tiers - 1;
 		    	return ''; 
 		    }
 	    }
@@ -1239,7 +1250,7 @@ var
     	if (if_tiers < 0){
     		throw new Error("get_next_if_statement_pos ("+if_tiers+") if_tiers less than 0");
     	}
-    	return {go_to: i-1}; 
+    	return {go_to: i}; 
     };
 
 
@@ -1277,7 +1288,7 @@ var
     	if (if_tiers < 0){
     		throw new Error("get_next_endif_statement_pos ("+if_tiers+") if_tiers less than 0");
     	}
-    	return {go_to: i-1}; 
+    	return {go_to: i}; 
     };
 
 
@@ -1412,6 +1423,7 @@ var
 		    } else {
 		    	returned_template = util.fetch_template($template_obj);
 		    }
+
 		} else if (object_type === 'array') {
 			// if $template_obj is an array, we loop through each element and concatenate the templates 
 		    util.for_each($template_obj, function($key, $val){
@@ -1424,9 +1436,10 @@ var
 		    valid = false;
 		}
 
+
 		// check for returned_template equalling false (in case we tried to fetch it)
-		if (valid) {
-			valid = returned_template !== false;
+		if (returned_template === false) {
+			returned_template = $template_obj;
 		}
 
 		// check for empty string or all whitespace
@@ -1438,7 +1451,7 @@ var
 		if (valid) {
 			return returned_template;
 		} else {
-			console.error('ERROR: bowtie.populate: No valid template was passed and no valid template '+
+			throw new Error('Bowite error: (util.compile_raw_template) No valid template was passed and no valid template '+
 				'key was specified. Check the value of the first parameter.');
 		    return false;
 		}
@@ -1477,10 +1490,10 @@ var
 	    @returns {String|Boolean} If the template is found, return it. Else, return false.
 	 */
 	util.fetch_template = function($template_key) {
-		$template_key = $template_key.split('.');
-		var templatehtml = util.object_rsearch($template_key, template_cache);
+		var find_key = $template_key.split('.');
+		var templatehtml = util.object_rsearch(find_key, template_cache);
 		if (templatehtml === null) {
-			return '';
+			return false;
 		} else {
 			return templatehtml;
 		}
