@@ -188,7 +188,12 @@ var
 		//	Tokenize
 		// ------------------------------------
 
-		template_key = bt.compile($template_raw);
+		// we may already have this template in place so let's skip over it if we have to
+		if (util.in_string($template_raw, reg_check_bowtie)) {
+			template_key = bt.compile($template_raw);
+		} else {
+			template_key = { template_key_id: util.object_rsearch(util.trim($template_raw).split('.'), template_cache) };
+		}
 
 		// ------------------------------------
 		//	Render
@@ -253,7 +258,7 @@ var
 		}
 
 		if (util.get_type($template_key) === 'string') {
-			$template_key = { template_key_id: key_id };
+			$template_key = { template_key_id: util.object_rsearch($template_key.split('.'), template_cache) };
 		}
 
  		var template_data = util.object_rsearch($template_key.template_key_id.split('.'), template_cache);
@@ -325,9 +330,9 @@ var
 	 */
 	bt_factory.load = function($template_key, $template_str) {
 
-		// overwrite everything if first param is true because we have json
-		if ($template_key === true && util.get_type($template_str) === 'object') {
-			template_cache = $template_str;
+		// overwrite everything if first param is object because we have json
+		if (util.get_type($template_key) === 'object' && typeof $template_str === 'undefined') {
+			fn.recursive_compile($template_key, '');
 			return true;
 		}
 
@@ -352,8 +357,12 @@ var
 				template_pointer = template_pointer[key_pointer];
 			}
 		}
+
+		// compile the template
+		var output = bt.compile($template_str);
+
 		// save the template
-		template_pointer[key_pointer] = $template_str;
+		template_pointer[key_pointer] = output.template_key_id;
 		return true;
 	};
 
@@ -458,6 +467,37 @@ var
 
 	//---------------------------------------------------------------------------------------------
 	// Token workhorse functions
+
+
+	/**
+	  	Used for loading and compiling objects containing multiple templates. Usually for JSON.
+
+	    @name fn.recursive_compile
+	    @private
+	    @function
+	    @param {Object} The object containing each template
+	    @param {String} A keystring to guide each loading/compiling function
+	    @returns {Boolean} True if succeeded
+	 */
+	fn.recursive_compile = function ( $object, $keystring ) {
+	    for (var elem in $object) {
+	    	if (!$object.hasOwnProperty(elem))
+        		continue; 
+
+        	var obj_type = util.get_type($object[elem]),
+        		keystring_copy = $keystring;
+        	if (keystring_copy !== '') {
+        		keystring_copy += '.'
+        	}
+        	keystring_copy += elem;
+	        if (obj_type === "object"){
+	            fn.recursive_compile($object[elem], keystring_copy);
+	        } else if (obj_type === 'string') {
+	        	bt.load(keystring_copy, $object[elem]);
+	        }  
+	    }
+	    return true;
+	}
 
 
 	/**
@@ -990,7 +1030,7 @@ var
     		// get the object that's asked for from first the data, then bt.db_pointer
     		temp_dataset = util.object_rsearch(key_array, $data);
     		if (temp_dataset === null) {
-    			temp_dataset = util.object_rsearch(key_array, bt_pointer);
+    			temp_dataset = util.object_rsearch(key_array, bowtie.db_pointer);
     			// pass blank object if not found
     			if (temp_dataset === null) {
 	    			temp_dataset = {};
