@@ -957,9 +957,9 @@ var
     			if (util.get_type(object_var) === 'array' && get_val !== '' && get_prop !== '') {
     				util.for_each(object_var, function($i, $val) {
 						if (var_compare) {
-							comparison_result = fn.determine_evaluate($val[get_prop], false, $data[get_val]);
+							comparison_result = fn.determine_evaluate(util.object_rsearch(get_prop.split('.'), $val), false, util.object_rsearch(get_val.split('.'), $data));
 						} else {
-							comparison_result = fn.determine_evaluate($val[get_prop], false, get_val);
+							comparison_result = fn.determine_evaluate(util.object_rsearch(get_prop.split('.'), $val), false, get_val);
 						}
 
 					    if (comparison_result) {
