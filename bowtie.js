@@ -50,7 +50,7 @@ var
 	// for removing all brackets only
 	reg_brackets = /\{\{|\}\}/g,
 	// (Taken from jQuery)
-	str_reg_all_whitespace = "[\\x20\\t\\r\\n\\f]";
+	str_reg_all_whitespace = "[\\x20\\t\\r\\n\\f]",
 	// (Taken from jQuery)
 	reg_trim = new RegExp( "^" + str_reg_all_whitespace + "+|((?:^|[^\\\\])(?:\\\\.)*)" + str_reg_all_whitespace + "+$", "g" ),
 
@@ -199,7 +199,7 @@ var
 		//	Render
 		// ------------------------------------
 
-		working_template = bt.render(template_key, global_data);
+		var working_template = bt.render(template_key, global_data);
 
 		// get the benchmark time and save it
 		bench_end = new Date().getTime();
@@ -265,7 +265,7 @@ var
 
  		if (template_data !== null) {
  			template_tokens = template_data.slice(0);
- 			working_template = fn.parse_tokens(passdata);
+ 			var working_template = fn.parse_tokens(passdata);
  			// reset some class vars
  			fn.reset_class_vars();
  			// ship 'er out.
@@ -1308,7 +1308,7 @@ var
     	var $steps = util.trim($varname).split('.'),
     		passdata = {};
 		if (typeof $plugin_obj.compile_func !== 'undefined'){
-    		passdata = $plugin_obj.compile_func($command);
+    		passdata = $plugin_obj.compile_func($command, $varname);
     	}
 
     	var t_action = function($data, $pos) {
@@ -1515,7 +1515,7 @@ var
 		if (local_obj_steps === undefined || $obj_pointer === undefined) {
 			return null;
 		}
-		var next_path = local_obj_steps.shift(),
+		var next_path = util.trim(local_obj_steps.shift()),
 			steps_left = local_obj_steps.length,
 			obj_type = util.get_type($obj_pointer);
 		if (util.get_type(next_path) !== 'string' || (obj_type !== 'object' && obj_type !== 'array')) {
@@ -1536,10 +1536,17 @@ var
 				return null;
 			}
 
-		// unfortnately, if we are pointing to an array and the eq() isn't present, we cant progress so we're done
+		// we may have a length attribute as opposed to a actual var called "length"
+		} else if (next_path == 'length' && steps_left === 0) {
+			if (typeof $obj_pointer.length !== 'undefined'){
+				return $obj_pointer.length;
+			}
+
+		// unfortnately, if we are pointing to an array and the "eq()" or "length" isn't present, we cant progress so we're done
 		} else if (obj_type === 'array') {
 			return null;
 		}
+
 
 		// if everything validates, we check for the existence of the property and return the proper data
 		if (next_path in $obj_pointer) {
@@ -1960,14 +1967,17 @@ var
 
 	// slugify
 	bt.register_plugin('slug', function($var_value) {
-		if (util.get_type($var_value) !== 'string') {
-			return $var_value;
+		if (typeof $var_value !== 'string') {
+			return '';
 		}
 		return util.slugify(util.trim($var_value));
 	});
 
 	// escape quotes
 	bt.register_plugin('escape_quotes',  function($var_value) {
+		if (typeof $var_value !== 'string') {
+			return '';
+		}
 		return $var_value.replace(/"/g, '&quot;');
 	});
 
