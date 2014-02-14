@@ -17,4 +17,4 @@
  */
 
 
-Full readme, docs and demos coming soon. Still needs to be broken in a bit.
+Simply an experiment to practice scope and recursive algorithms. Runs about as fast as un-compiled handlebars. 
